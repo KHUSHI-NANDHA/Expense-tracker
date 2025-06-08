@@ -1,0 +1,622 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Expense Analytics</h5>
+                <p class="card-text">View your spending patterns and insights</p>
+                
+                <!-- Custom Date Range Selector -->
+                <form id="dateRangeForm" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="dateRangePreset" class="form-label">Quick Select:</label>
+                        <select id="dateRangePreset" class="form-select">
+                            <option value="">Custom Range</option>
+                            <option value="week">This Week</option>
+                            <option value="month" selected>This Month</option>
+                            <option value="quarter">This Quarter</option>
+                            <option value="year">This Year</option>
+                            <option value="last30">Last 30 Days</option>
+                            <option value="last90">Last 90 Days</option>
+                            <option value="last365">Last 365 Days</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="startDate" class="form-label">Start Date:</label>
+                        <input type="date" class="form-control" id="startDate" name="startDate">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="endDate" class="form-label">End Date:</label>
+                        <input type="date" class="form-control" id="endDate" name="endDate">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">Apply Filter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 g-4">
+    <!-- Category Distribution -->
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Expenses by Category</h5>
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="categoryPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Series Chart -->
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title" id="timeSeriesChartTitle">Expense Trend</h5>
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="timeSeriesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Comparison -->
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Category-wise Comparison</h5>
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="categoryComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day of Week Distribution -->
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Expenses by Day of Week</h5>
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="dayOfWeekChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 5 Expenses -->
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Top 5 Expenses</h5>
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="topExpensesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Parse the data passed from Flask
+    const rawExpensesData = {{ raw_expenses|safe }};
+    const categoryTotals = {{ category_totals|safe }};
+    const dayOfWeekData = {{ day_of_week_data|safe }};
+    const topExpenses = {{ top_expenses|safe }};
+
+    // Helper function to format currency without dollar sign
+    const formatCurrency = (value) => {
+        return value.toFixed(2);
+    };
+
+    // Date manipulation helpers
+    function getDateRange(preset) {
+        const today = new Date();
+        let startDate = new Date();
+        let endDate = new Date();
+        
+        switch(preset) {
+            case 'week':
+                // First day of current week (Sunday)
+                startDate = new Date(today.setDate(today.getDate() - today.getDay()));
+                endDate = new Date();
+                break;
+            case 'month':
+                // First day of current month
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                endDate = new Date();
+                break;
+            case 'quarter':
+                // First day of current quarter
+                const quarter = Math.floor(today.getMonth() / 3);
+                startDate = new Date(today.getFullYear(), quarter * 3, 1);
+                endDate = new Date();
+                break;
+            case 'year':
+                // First day of current year
+                startDate = new Date(today.getFullYear(), 0, 1);
+                endDate = new Date();
+                break;
+            case 'last30':
+                // Last 30 days
+                startDate = new Date();
+                startDate.setDate(startDate.getDate() - 30);
+                endDate = new Date();
+                break;
+            case 'last90':
+                // Last 90 days
+                startDate = new Date();
+                startDate.setDate(startDate.getDate() - 90);
+                endDate = new Date();
+                break;
+            case 'last365':
+                // Last 365 days
+                startDate = new Date();
+                startDate.setDate(startDate.getDate() - 365);
+                endDate = new Date();
+                break;
+            default:
+                // Default to current month
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                endDate = new Date();
+        }
+        
+        return {
+            start: startDate,
+            end: endDate
+        };
+    }
+
+    // Format date to YYYY-MM-DD for input fields
+    function formatDateForInput(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    // Main function to filter and analyze expense data
+    function analyzeExpenses(startDate, endDate) {
+        // Filter expenses within date range
+        const filteredExpenses = rawExpensesData.filter(expense => {
+            const expenseDate = new Date(expense.date);
+            return expenseDate >= startDate && expenseDate <= endDate;
+        });
+        
+        // Prepare data structures for analysis
+        const categoryData = {};
+        const timeSeriesData = {};
+        const categoryTimeData = {};
+        
+        // Process each expense
+        filteredExpenses.forEach(expense => {
+            const expenseDate = new Date(expense.date);
+            const amount = expense.amount;
+            const categoryName = expense.category_name;
+            
+            // Category totals
+            if (!categoryData[categoryName]) {
+                categoryData[categoryName] = {
+                    amount: 0,
+                    color: expense.color || categoryTotals[categoryName]?.color || '#' + Math.floor(Math.random()*16777215).toString(16)
+                };
+            }
+            categoryData[categoryName].amount += amount;
+            
+            // Time series data - group by appropriate interval
+            let interval;
+            const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+            
+            if (daysDiff <= 31) {
+                // Daily for up to a month
+                interval = expense.date; // YYYY-MM-DD
+            } else if (daysDiff <= 90) {
+                // Weekly for up to 3 months
+                const week = `${expenseDate.getFullYear()}-W${Math.ceil((expenseDate.getDate() + expenseDate.getDay()) / 7)}`;
+                interval = week;
+            } else {
+                // Monthly for longer periods
+                interval = `${expenseDate.getFullYear()}-${(expenseDate.getMonth() + 1).toString().padStart(2, '0')}`;
+            }
+            
+            if (!timeSeriesData[interval]) {
+                timeSeriesData[interval] = 0;
+            }
+            timeSeriesData[interval] += amount;
+            
+            // Category time series data
+            if (!categoryTimeData[interval]) {
+                categoryTimeData[interval] = {};
+            }
+            if (!categoryTimeData[interval][categoryName]) {
+                categoryTimeData[interval][categoryName] = 0;
+            }
+            categoryTimeData[interval][categoryName] += amount;
+        });
+        
+        // Update charts with new data
+        updateCategoryPieChart(categoryData);
+        updateTimeSeriesChart(timeSeriesData, daysDiff);
+        updateCategoryComparisonChart(categoryTimeData, categoryData);
+    }
+    
+    // Chart instances to update
+    let categoryPieChart;
+    let timeSeriesChart;
+    let categoryComparisonChart;
+    
+    // Initialize charts
+    function initCharts() {
+        // Category Pie Chart
+        categoryPieChart = new Chart(document.getElementById('categoryPieChart'), {
+            type: 'pie',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: []
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const totalValue = context.dataset.data.reduce((sum, value) => sum + value, 0);
+                                const percentage = Math.round((context.raw / totalValue) * 100);
+                                return `${context.label}: ${percentage}% (${formatCurrency(context.raw)})`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    
+        // Time Series Chart
+        timeSeriesChart = new Chart(document.getElementById('timeSeriesChart'), {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Expenses',
+                    data: [],
+                    backgroundColor: '#0d6efd'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: formatCurrency
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return formatCurrency(context.raw);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    
+        // Category Comparison Chart
+        categoryComparisonChart = new Chart(document.getElementById('categoryComparisonChart'), {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        stacked: true,
+                        ticks: {
+                            callback: formatCurrency
+                        }
+                    },
+                    x: {
+                        stacked: true,
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 5
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${formatCurrency(context.raw)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    
+        // Day of Week Chart
+        new Chart(document.getElementById('dayOfWeekChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+                datasets: [{
+                    label: 'Average Expense',
+                    data: dayOfWeekData,
+                    backgroundColor: '#0d6efd'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: formatCurrency
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return formatCurrency(context.raw);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    
+        // Top 5 Expenses Chart
+        new Chart(document.getElementById('topExpensesChart'), {
+            type: 'bar',
+            data: {
+                labels: topExpenses.map(expense => expense.description),
+                datasets: [{
+                    label: 'Amount',
+                    data: topExpenses.map(expense => expense.amount),
+                    backgroundColor: '#0d6efd'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: formatCurrency
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return formatCurrency(context.raw);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Update functions for each chart
+    function updateCategoryPieChart(categoryData) {
+        const categories = Object.keys(categoryData);
+        const amounts = categories.map(cat => categoryData[cat].amount);
+        const colors = categories.map(cat => categoryData[cat].color);
+        
+        categoryPieChart.data.labels = categories;
+        categoryPieChart.data.datasets[0].data = amounts;
+        categoryPieChart.data.datasets[0].backgroundColor = colors;
+        categoryPieChart.update();
+    }
+    
+    function updateTimeSeriesChart(timeSeriesData, daysDiff) {
+        const intervals = Object.keys(timeSeriesData).sort();
+        const values = intervals.map(interval => timeSeriesData[interval]);
+        
+        // Set appropriate title based on interval type
+        let title = 'Expense Trend';
+        if (daysDiff <= 31) {
+            title = 'Daily Expense Trend';
+        } else if (daysDiff <= 90) {
+            title = 'Weekly Expense Trend';
+        } else {
+            title = 'Monthly Expense Trend';
+        }
+        document.getElementById('timeSeriesChartTitle').textContent = title;
+        
+        timeSeriesChart.data.labels = intervals;
+        timeSeriesChart.data.datasets[0].data = values;
+        timeSeriesChart.update();
+    }
+    
+    function updateCategoryComparisonChart(categoryTimeData, categoryData) {
+        const intervals = Object.keys(categoryTimeData).sort();
+        const categories = Object.keys(categoryData);
+        
+        // Create datasets for each category
+        const datasets = categories.map(category => {
+            return {
+                label: category,
+                data: intervals.map(interval => categoryTimeData[interval][category] || 0),
+                backgroundColor: categoryData[category].color
+            };
+        });
+        
+        categoryComparisonChart.data.labels = intervals;
+        categoryComparisonChart.data.datasets = datasets;
+        categoryComparisonChart.update();
+    }
+    
+    function updateCharts() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates');
+            return;
+        }
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        
+        console.log("Date range:", startDate, "to", endDate);
+        
+        // Filter expenses within date range
+        const filteredExpenses = rawExpensesData.filter(expense => {
+            const expenseDate = new Date(expense.date);
+            return expenseDate >= start && expenseDate <= end;
+        });
+        
+        console.log("Filtered expenses:", filteredExpenses.length);
+        
+        // Prepare data for category pie chart
+        const categoryData = {};
+        filteredExpenses.forEach(expense => {
+            const categoryName = expense.category_name;
+            if (!categoryData[categoryName]) {
+                categoryData[categoryName] = {
+                    amount: 0,
+                    color: expense.color || categoryTotals[categoryName]?.color || '#' + Math.floor(Math.random()*16777215).toString(16)
+                };
+            }
+            categoryData[categoryName].amount += expense.amount;
+        });
+        
+        // Update category pie chart
+        const categories = Object.keys(categoryData);
+        const amounts = categories.map(cat => categoryData[cat].amount);
+        const colors = categories.map(cat => categoryData[cat].color);
+        
+        console.log("Categories:", categories);
+        console.log("Amounts:", amounts);
+        
+        categoryPieChart.data.labels = categories;
+        categoryPieChart.data.datasets[0].data = amounts;
+        categoryPieChart.data.datasets[0].backgroundColor = colors;
+        categoryPieChart.update();
+        
+        // Prepare time series data
+        const timeSeriesData = {};
+        const categoryTimeData = {};
+        
+        filteredExpenses.forEach(expense => {
+            const expenseDate = new Date(expense.date);
+            const interval = expense.date; // Using daily intervals for now
+            
+            if (!timeSeriesData[interval]) {
+                timeSeriesData[interval] = 0;
+            }
+            timeSeriesData[interval] += expense.amount;
+            
+            if (!categoryTimeData[interval]) {
+                categoryTimeData[interval] = {};
+            }
+            if (!categoryTimeData[interval][expense.category_name]) {
+                categoryTimeData[interval][expense.category_name] = 0;
+            }
+            categoryTimeData[interval][expense.category_name] += expense.amount;
+        });
+        
+        // Update time series chart
+        const intervals = Object.keys(timeSeriesData).sort();
+        const values = intervals.map(interval => timeSeriesData[interval]);
+        
+        timeSeriesChart.data.labels = intervals;
+        timeSeriesChart.data.datasets[0].data = values;
+        timeSeriesChart.update();
+        
+        // Update category comparison chart
+        const datasets = categories.map(category => {
+            return {
+                label: category,
+                data: intervals.map(interval => categoryTimeData[interval][category] || 0),
+                backgroundColor: categoryData[category].color
+            };
+        });
+        
+        categoryComparisonChart.data.labels = intervals;
+        categoryComparisonChart.data.datasets = datasets;
+        categoryComparisonChart.update();
+    }
+    
+    // Initialize date range selector and charts
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize charts
+        initCharts();
+        
+        // Set default date range (this month)
+        const defaultRange = getDateRange('month');
+        document.getElementById('startDate').value = formatDateForInput(defaultRange.start);
+        document.getElementById('endDate').value = formatDateForInput(defaultRange.end);
+        
+        // Initial analysis with default date range
+        updateCharts();
+        
+        // Event listener for preset selector
+        document.getElementById('dateRangePreset').addEventListener('change', function() {
+            if (this.value) {
+                const range = getDateRange(this.value);
+                document.getElementById('startDate').value = formatDateForInput(range.start);
+                document.getElementById('endDate').value = formatDateForInput(range.end);
+                updateCharts();
+            }
+        });
+        
+        // Event listener for form submission
+        document.getElementById('dateRangeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            updateCharts();
+        });
+    });
+</script>
+{% endblock %} 

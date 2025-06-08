@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ settings.theme if settings and settings.theme else 'light' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker - {% block title %}{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #6200ea;
+            --background-color: #ffffff;
+            --text-color: #000000;
+            --card-bg: #ffffff;
+            --card-text: #000000;
+            --input-bg: #ffffff;
+            --input-text: #000000;
+            --border-color: #dee2e6;
+            --nav-bg: #6200ea;
+            --nav-text: #ffffff;
+            --nav-text-hover: #e1bee7;  /* Lighter purple for hover state */
+            --hover-color: #bb86fc;
+            --active-color: #9c27b0;
+            --secondary-text: #666666;
+            
+            /* New color variables for different text types */
+            --expense-amount-positive: #00e676;  /* Green for positive amounts */
+            --expense-amount-negative: #ff5252;  /* Red for negative amounts */
+            --date-color: #82b1ff;              /* Light blue for dates */
+            --category-tag-bg: #4a148c;         /* Deep purple for category tags */
+            --category-tag-text: #e1bee7;       /* Light purple for category text */
+            --description-color: #ffd54f;       /* Amber for descriptions */
+            --header-color: #bb86fc;            /* Light purple for headers */
+            --link-color: #64ffda;              /* Teal for links */
+            --alert-success: #00c853;           /* Green for success messages */
+            --alert-error: #ff1744;             /* Red for error messages */
+        }
+
+        [data-theme="dark"] {
+            --primary-color: #6200ea;
+            --background-color: #212121;
+            --text-color: #ffffff;
+            --card-bg: #1e1e1e;
+            --card-text: #ffffff;
+            --input-bg: #333333;
+            --input-text: #ffffff;
+            --border-color: #404040;
+            --nav-bg: #1a1a1a;
+            --nav-text: #e1bee7;  /* Lighter purple for better visibility in dark mode */
+            --nav-text-hover: #ffffff;  /* White for hover state in dark mode */
+            --hover-color: #bb86fc;
+            --active-color: #9c27b0;
+            --secondary-text: #b0b0b0;
+            
+            /* New color variables for different text types */
+            --expense-amount-positive: #00e676;  /* Green for positive amounts */
+            --expense-amount-negative: #ff5252;  /* Red for negative amounts */
+            --date-color: #82b1ff;              /* Light blue for dates */
+            --category-tag-bg: #4a148c;         /* Deep purple for category tags */
+            --category-tag-text: #e1bee7;       /* Light purple for category text */
+            --description-color: #ffd54f;       /* Amber for descriptions */
+            --header-color: #bb86fc;            /* Light purple for headers */
+            --link-color: #64ffda;              /* Teal for links */
+            --alert-success: #00c853;           /* Green for success messages */
+            --alert-error: #ff1744;             /* Red for error messages */
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .navbar {
+            background-color: var(--nav-bg) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: background-color 0.3s ease;
+            padding: 0.5rem 1rem;
+        }
+
+        .navbar-nav {
+            align-items: center;
+        }
+
+        .nav-item {
+            margin: 0 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            color: var(--nav-text) !important;
+            font-weight: 500;
+        }
+
+        .nav-link i {
+            margin-right: 0.5rem;
+            font-size: 1.1rem;
+            color: var(--nav-text);
+        }
+
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--nav-text-hover) !important;
+        }
+
+        .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: var(--nav-text-hover) !important;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.4rem;
+            padding: 0.5rem 1rem;
+            color: var(--nav-text) !important;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            color: var(--card-text);
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .card-title, .card-text {
+            color: var(--card-text);
+        }
+
+        .form-control, .form-select {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border: 1px solid var(--border-color);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border-color: var(--hover-color);
+            box-shadow: 0 0 0 0.2rem rgba(187, 134, 252, 0.25);
+        }
+
+        .input-group-text {
+            background-color: var(--card-bg);
+            color: var(--card-text);
+            border-color: var(--border-color);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--hover-color);
+            border-color: var(--hover-color);
+        }
+
+        .btn-primary:active {
+            background-color: var(--active-color) !important;
+            border-color: var(--active-color) !important;
+        }
+
+        .table {
+            color: var(--text-color);
+        }
+
+        .table thead th {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+
+        .table td {
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--nav-bg);
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-top: none;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .bottom-nav .nav-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .bottom-nav .nav-link {
+            color: var(--nav-text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.8rem;
+            opacity: 0.8;
+            transition: color 0.3s ease, opacity 0.3s ease;
+        }
+
+        .bottom-nav .nav-link i {
+            font-size: 1.5rem;
+            margin-bottom: 2px;
+        }
+
+        .bottom-nav .nav-link:hover,
+        .bottom-nav .nav-link.active {
+            color: var(--hover-color);
+            opacity: 1;
+        }
+
+        .add-button {
+            background-color: var(--primary-color);
+            color: var(--nav-text);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -30px;
+            box-shadow: 0 4px 12px rgba(98, 0, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .add-button:hover {
+            background-color: var(--hover-color);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(187, 134, 252, 0.4);
+        }
+
+        .add-button:active {
+            background-color: var(--active-color);
+        }
+
+        .add-button i {
+            font-size: 2rem;
+        }
+
+        /* Theme switch styles */
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--hover-color);
+        }
+
+        input:checked + .slider:before {
+            background-color: var(--nav-text);
+        }
+
+        /* Fix for dark mode select options */
+        select option {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+        }
+
+        /* Fix for placeholder text */
+        ::placeholder {
+            color: var(--secondary-text) !important;
+            opacity: 0.9 !important;
+        }
+
+        /* Dark mode specific styles for placeholders */
+        [data-theme="dark"] ::placeholder {
+            color: var(--secondary-text) !important;
+            opacity: 0.9 !important;
+        }
+
+        /* Settings dropdown styles */
+        .settings-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .settings-dropdown .dropdown-menu {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+
+        .settings-dropdown .dropdown-item {
+            color: var(--text-color);
+        }
+
+        .settings-dropdown .dropdown-item:hover {
+            background-color: var(--input-bg);
+        }
+
+        .theme-switch-container {
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .theme-switch-container span {
+            color: var(--text-color);
+            margin-right: 1rem;
+        }
+
+        .alert {
+            background-color: var(--card-bg);
+            border-left: 4px solid var(--primary-color);
+            color: var(--text-color);
+        }
+
+        .dropdown-menu {
+            background-color: var(--card-bg);
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            min-width: 200px;
+        }
+
+        .dropdown-item {
+            color: var(--text-color);
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--input-bg);
+            color: var(--hover-color);
+        }
+
+        .dropdown-divider {
+            border-color: var(--border-color);
+            margin: 0.5rem 0;
+        }
+
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--hover-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .dropdown-toggle::after {
+            margin-left: 0.5rem;
+        }
+
+        /* Add responsive styles for tablet mode */
+        @media (max-width: 991px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .navbar {
+                padding: 0.5rem;
+            }
+
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+
+            .nav-link {
+                padding: 0.5rem;
+                font-size: 0.95rem;
+            }
+
+            .nav-link i {
+                font-size: 1rem;
+                margin-right: 0.3rem;
+            }
+
+            .card {
+                margin-bottom: 1rem;
+            }
+
+            .row {
+                margin: 0 -10px;
+            }
+
+            .col-md-4, .col-md-8 {
+                padding: 0 10px;
+            }
+
+            /* Adjust grid layout for better tablet view */
+            .row > [class*="col-"] {
+                margin-bottom: 1rem;
+            }
+
+            /* Make cards more compact on tablet */
+            .card-body {
+                padding: 1rem;
+            }
+
+            /* Adjust table responsiveness */
+            .table-responsive {
+                margin: 0 -10px;
+            }
+
+            .table {
+                font-size: 0.95rem;
+            }
+
+            /* Adjust section headers */
+            .section-header {
+                font-size: 1.3rem;
+                margin-bottom: 1rem;
+                padding-bottom: 0.5rem;
+            }
+
+            /* Adjust recent expenses section */
+            .recent-expenses {
+                padding: 15px;
+            }
+
+            .recent-expenses .expense-item {
+                padding: 12px;
+            }
+
+            /* Adjust stats cards */
+            .stats-card {
+                padding: 1rem;
+            }
+
+            .stats-card .card-title {
+                font-size: 1.1rem;
+            }
+
+            .stats-card .card-text {
+                font-size: 1.2rem;
+            }
+
+            /* Adjust form elements */
+            .form-control, .form-select {
+                font-size: 0.95rem;
+            }
+
+            .form-label {
+                font-size: 0.95rem;
+            }
+
+            /* Adjust buttons */
+            .btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.95rem;
+            }
+
+            /* Adjust dropdown menu */
+            .dropdown-menu {
+                min-width: 180px;
+            }
+
+            .dropdown-item {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.95rem;
+            }
+
+            /* Adjust theme switch container */
+            .theme-switch-container {
+                padding: 0.4rem 0.8rem;
+            }
+
+            .theme-switch {
+                width: 45px;
+                height: 22px;
+            }
+
+            .slider:before {
+                height: 14px;
+                width: 14px;
+            }
+        }
+
+        /* Additional adjustments for smaller tablets */
+        @media (max-width: 768px) {
+            .navbar-nav {
+                padding: 0.5rem 0;
+            }
+
+            .nav-item {
+                margin: 0.2rem 0;
+            }
+
+            .nav-link {
+                padding: 0.4rem 0.8rem;
+            }
+
+            .card {
+                margin-bottom: 0.8rem;
+            }
+
+            .stats-card {
+                margin-bottom: 0.8rem;
+            }
+        }
+
+        /* Action buttons styling */
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .action-btn {
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            color: var(--text-color);
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.95rem;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .action-btn i {
+            font-size: 1rem;
+        }
+
+        .action-btn.edit {
+            color: #2196f3;
+        }
+
+        .action-btn.edit:hover {
+            background-color: rgba(33, 150, 243, 0.1);
+            border-color: #2196f3;
+        }
+
+        .action-btn.delete {
+            color: #f44336;
+        }
+
+        .action-btn.delete:hover {
+            background-color: rgba(244, 67, 54, 0.1);
+            border-color: #f44336;
+        }
+
+        /* Table action column styling */
+        .table th:last-child,
+        .table td:last-child {
+            text-align: center;
+            white-space: nowrap;
+            width: 160px;
+            min-width: 130px;
+            max-width: 200px;
+            padding: 0.5rem 1.2rem;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 991px) {
+            .action-buttons {
+                display: flex;
+                flex-direction: row;
+                gap: 0.4rem;
+                align-items: center;
+                justify-content: center;
+                box-sizing: border-box;
+                width: 100%;
+            }
+            .action-btn {
+                width: 40px;
+                height: 40px;
+                padding: 0;
+                justify-content: center;
+                font-size: 0;
+                border-radius: 8px;
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                box-sizing: border-box;
+            }
+            .action-btn i {
+                font-size: 1.3rem;
+                margin: 0;
+            }
+            .action-btn span {
+                display: none;
+            }
+            .table th:last-child,
+            .table td:last-child {
+                width: 100px;
+                min-width: 90px;
+                max-width: 120px;
+                padding: 0.5rem 0.5rem;
+                text-align: center;
+                box-sizing: border-box;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .action-buttons {
+                display: flex;
+                flex-direction: row;
+                gap: 0.3rem;
+                align-items: center;
+                justify-content: center;
+                box-sizing: border-box;
+                width: 100%;
+            }
+            .action-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 0;
+                border-radius: 8px;
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                box-sizing: border-box;
+            }
+            .action-btn i {
+                font-size: 1.2rem;
+            }
+            .table th:last-child,
+            .table td:last-child {
+                width: 80px;
+                min-width: 70px;
+                max-width: 100px;
+                padding: 0.4rem 0.4rem;
+                text-align: center;
+                box-sizing: border-box;
+            }
+        }
+
+        /* Table responsive styles */
+        .table-responsive {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        .table {
+            width: 100%;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.75rem;
+            vertical-align: middle;
+            border-color: var(--border-color);
+            font-size: 0.95rem;
+            word-wrap: break-word;
+        }
+
+        /* Make table more compact on tablet */
+        @media (max-width: 991px) {
+            .table th,
+            .table td {
+                padding: 0.4rem;
+                font-size: 0.85rem;
+            }
+
+            /* Adjust column widths for better visibility */
+            .table th:nth-child(1),
+            .table td:nth-child(1) {
+                width: 12%;
+            }
+
+            .table th:nth-child(2),
+            .table td:nth-child(2) {
+                width: 28%;
+            }
+
+            .table th:nth-child(3),
+            .table td:nth-child(3) {
+                width: 15%;
+            }
+
+            .table th:nth-child(4),
+            .table td:nth-child(4) {
+                width: 15%;
+            }
+
+            .table th:nth-child(5),
+            .table td:nth-child(5) {
+                width: 30%;
+            }
+
+            /* Make action buttons more compact */
+            .action-buttons {
+                display: flex;
+                gap: 0.2rem;
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
+
+            .action-btn {
+                padding: 0.15rem 0.3rem;
+                font-size: 0.8rem;
+                white-space: nowrap;
+            }
+
+            .action-btn i {
+                font-size: 0.85rem;
+            }
+
+            /* Ensure text doesn't overflow */
+            .table td {
+                max-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            /* Allow description to wrap */
+            .table td:nth-child(2) {
+                white-space: normal;
+                word-break: break-word;
+            }
+        }
+
+        /* Further adjustments for smaller tablets */
+        @media (max-width: 768px) {
+            .table th,
+            .table td {
+                padding: 0.3rem;
+                font-size: 0.8rem;
+            }
+
+            /* Adjust column widths for smaller screens */
+            .table th:nth-child(1),
+            .table td:nth-child(1) {
+                width: 15%;
+            }
+
+            .table th:nth-child(2),
+            .table td:nth-child(2) {
+                width: 25%;
+            }
+
+            .table th:nth-child(3),
+            .table td:nth-child(3) {
+                width: 15%;
+            }
+
+            .table th:nth-child(4),
+            .table td:nth-child(4) {
+                width: 15%;
+            }
+
+            .table th:nth-child(5),
+            .table td:nth-child(5) {
+                width: 30%;
+            }
+
+            /* Stack action buttons vertically on very small screens */
+            .action-buttons {
+                flex-direction: column;
+                gap: 0.2rem;
+            }
+
+            .action-btn {
+                width: 100%;
+                justify-content: center;
+                padding: 0.2rem;
+            }
+        }
+
+        /* Ensure table headers are visible and don't wrap */
+        .table thead th {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+
+        /* Style for category tags to prevent overflow */
+        .table td .expense-category {
+            display: inline-block;
+            padding: 0.15rem 0.4rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            background-color: var(--category-tag-bg);
+            color: var(--category-tag-text);
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+
+        /* Ensure cells don't have weird max-widths and allow text wrapping where appropriate */
+        .table td {
+            max-width: none;
+            overflow: visible;
+            text-overflow: clip;
+            white-space: normal;
+            box-sizing: border-box;
+        }
+
+        .table td:nth-child(2) {
+            white-space: normal;
+        }
+
+        .date-input-wrapper .calendar-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--secondary-text);
+            z-index: 2;
+        }
+        .date-input-wrapper input.form-control {
+            padding-right: 2.5em; /* Make space for the icon */
+        }
+
+        [data-theme="dark"] .table,
+        [data-theme="dark"] .table thead th,
+        [data-theme="dark"] .table tbody tr,
+        [data-theme="dark"] .table td {
+            background-color: #232323 !important; /* or #181818 for even darker */
+            color: #fff !important;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Expense Tracker</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if session.user_id %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                                <i class="bi bi-house-door"></i> Home
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'add_expense' %}active{% endif %}" href="{{ url_for('add_expense') }}">
+                                <i class="bi bi-plus-circle"></i> Add Expense
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'categories' %}active{% endif %}" href="{{ url_for('categories') }}">
+                                <i class="bi bi-grid"></i> Categories
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}" href="{{ url_for('analytics') }}">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="settingsDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-gear"></i> Settings
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <div class="theme-switch-container px-3 py-2">
+                                        <span>Dark Mode</span>
+                                        <div class="theme-switch">
+                                            <input type="checkbox" id="theme-toggle" {% if settings.theme == 'dark' %}checked{% endif %}>
+                                            <label class="slider" for="theme-toggle"></label>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('profile') }}">
+                                        <i class="bi bi-person"></i> Profile Settings
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'login' %}active{% endif %}" href="{{ url_for('login') }}">
+                                <i class="bi bi-box-arrow-in-right"></i> Login
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'register' %}active{% endif %}" href="{{ url_for('register') }}">
+                                <i class="bi bi-person-plus"></i> Register
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4" style="padding-top: 80px;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        // Enhanced theme switcher
+        const themeToggle = document.getElementById('theme-toggle');
+        
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            
+            // Update server with theme preference
+            fetch('/update_settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `theme=${theme}`
+            }).then(response => {
+                if (!response.ok) {
+                    console.error('Failed to update theme preference');
+                }
+            });
+        }
+
+        // Initialize theme immediately before DOM content loads to prevent flash
+        const savedTheme = localStorage.getItem('theme') || '{{ settings.theme if settings and settings.theme else "light" }}';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        // Additional initialization after DOM loads
+        document.addEventListener('DOMContentLoaded', () => {
+            if (themeToggle) {
+                themeToggle.checked = savedTheme === 'dark';
+            }
+
+            // Handle theme toggle
+            if (themeToggle) {
+                themeToggle.addEventListener('change', (e) => {
+                    const newTheme = e.target.checked ? 'dark' : 'light';
+                    setTheme(newTheme);
+                    // Prevent flash of wrong theme
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

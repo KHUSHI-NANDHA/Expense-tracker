@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Add Expense{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="section-header">Add New Expense</h2>
+                <form method="POST">
+                    <div class="mb-4">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="What did you spend on?" required>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="amount" class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text currency-symbol">{{ settings.currency }}</span>
+                                <input type="number" class="form-control amount-input" id="amount" name="amount" step="0.01" placeholder="0.00" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="currency" class="form-label">Currency</label>
+                            <select class="form-select" id="currency" name="currency">
+                                <option value="USD" {% if settings.currency == 'USD' %}selected{% endif %}>USD ($)</option>
+                                <option value="EUR" {% if settings.currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
+                                <option value="GBP" {% if settings.currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
+                                <option value="JPY" {% if settings.currency == 'JPY' %}selected{% endif %}>JPY (¥)</option>
+                                <option value="INR" {% if settings.currency == 'INR' %}selected{% endif %}>INR (₹)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="category_id" class="form-label">Category</label>
+                        <select class="form-select" id="category_id" name="category_id" required>
+                            <option value="">Select a category</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="date" class="form-label">Date</label>
+                        <div class="date-input-wrapper" style="position: relative;">
+                            <input type="text" class="form-control" id="date" name="date" value="{{ today }}" required autocomplete="off">
+                            <span class="calendar-icon">
+                                <i class="bi bi-calendar3" style="font-size: 1.2em;"></i>
+                            </span>
+                        </div>
+                        <div class="form-text" style="margin-top: 2px; color: var(--secondary-text); font-size: 0.95em;">
+                            Format: <b>dd-mm-yyyy</b>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-plus-circle me-2"></i>Add Expense
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 12px;
+        margin-top: 20px;
+    }
+
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    .input-group .currency-symbol {
+        background-color: var(--input-bg);
+        color: var(--input-text);
+        border: 1px solid var(--border-color);
+        border-right: none;
+        border-radius: 8px 0 0 8px;
+        padding: 12px 15px;
+        font-weight: 500;
+    }
+
+    .input-group .amount-input {
+        border-left: none;
+        border-radius: 0 8px 8px 0;
+        text-align: left;
+        padding-left: 5px;
+    }
+
+    .btn-primary {
+        padding: 12px;
+        font-weight: 500;
+        border-radius: 8px;
+    }
+
+    .section-header {
+        color: var(--header-color);
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    /* Dark mode specific styles */
+    [data-theme="dark"] .input-group .currency-symbol {
+        background-color: var(--input-bg);
+        color: var(--input-text);
+        border-color: var(--border-color);
+    }
+
+    [data-theme="dark"] .form-control::placeholder {
+        color: var(--secondary-text);
+        opacity: 0.7;
+    }
+
+    /* Ensure placeholder text is visible with maximum specificity */
+    input.form-control.flatpickr-input::placeholder,
+    .form-control.flatpickr-input::placeholder,
+    input::placeholder.flatpickr-input,
+    .flatpickr-input::placeholder,
+    [class*="flatpickr"] input::placeholder,
+    [class^="flatpickr"] ::placeholder
+     {
+        color: var(--secondary-text) !important; /* Use a visible color and force it */
+        opacity: 1 !important; /* Ensure full opacity */
+    }
+
+    /* Ensure the text entered by the user is also visible */
+    .flatpickr-input {
+        background-color: var(--input-bg);
+        color: var(--input-text) !important; /* Ensure text color is set */
+        border: 1px solid var(--border-color);
+        box-sizing: border-box; /* Ensure consistent sizing */
+    }
+
+     [data-theme="dark"] .flatpickr-input {
+        background-color: var(--input-bg);
+        color: var(--input-text) !important; /* Ensure text color is set in dark mode */
+        border-color: var(--border-color);
+    }
+
+    /* Add styles for the calendar icon provided by Flatpickr */
+     .flatpickr-wrapper {
+         display: flex;
+         align-items: center;
+         width: 100%; /* Ensure wrapper takes full width */
+     }
+
+     .flatpickr-wrapper .form-control {
+         flex-grow: 1; /* Allow the input to take available space */
+     }
+
+     .flatpickr-wrapper .flatpickr-calendar-icon {
+         margin-left: -30px; /* Position icon inside input */
+         padding-right: 10px; /* Add some padding */
+         cursor: pointer;
+         color: var(--secondary-text); /* Style icon color */
+     }
+
+     [data-theme="dark"] .flatpickr-wrapper .flatpickr-calendar-icon {
+         color: var(--secondary-text);
+     }
+
+
+    /* Styles for the Flatpickr calendar dropdown */
+    .flatpickr-calendar {
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        border: 1px solid var(--border-color);
+    }
+
+    .flatpickr-day {
+         color: var(--text-color);
+    }
+
+    .flatpickr-day.selected, .flatpickr-day.selected:hover {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+    }
+
+    .flatpickr-day.today {
+        border-color: var(--primary-color);
+    }
+
+     .flatpickr-day.today:hover {
+        background-color: var(--hover-color);
+    }
+
+     .flatpickr-month, .flatpickr-year {
+        color: var(--text-color);
+    }
+
+     .flatpickr-current-month .flatpickr-monthOption, .flatpickr-current-month input.cur-year {
+         color: var(--text-color);
+    }
+
+     .flatpickr-prev-month, .flatpickr-next-month {
+        color: var(--text-color);
+    }
+
+     .flatpickr-prev-month:hover i,
+     .flatpickr-next-month:hover i {
+         color: var(--hover-color);
+     }
+
+    [data-theme="dark"] .date-input-wrapper .calendar-icon i {
+        color: #fff !important;
+        opacity: 1 !important;
+    }
+    [data-theme="dark"] .date-input-wrapper .calendar-icon {
+        color: #fff !important;
+        opacity: 1 !important;
+    }
+    [data-theme="dark"] .mb-4 .form-text {
+        color: #fff !important;
+        opacity: 1 !important;
+    }
+
+</style>
+
+<script>
+// Make sure Bootstrap JavaScript is included
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Flatpickr on the date input
+    const fp = flatpickr("#date", {
+        dateFormat: "Y-m-d", // Format for the actual input value
+        altInput: true, // Enable a friendly input display
+        altFormat: "d-m-Y", // Friendly format for display
+        allowInput: true, // Allow manual typing
+    });
+
+    // Calendar icon click opens Flatpickr
+    const calendarIcon = document.querySelector('.calendar-icon');
+    if (calendarIcon) {
+        calendarIcon.addEventListener('click', function() {
+            fp.open();
+        });
+    }
+
+    // Update currency symbol when currency changes
+    const currencySelect = document.getElementById('currency');
+    if (currencySelect) {
+        currencySelect.addEventListener('change', function() {
+            const currencySymbols = {
+                'USD': '$',
+                'EUR': '€',
+                'GBP': '£',
+                'JPY': '¥',
+                'INR': '₹'
+            };
+            
+            // Update the currency symbol in the input group
+            document.querySelector('.currency-symbol').textContent = currencySymbols[this.value];
+            
+            // Update server settings
+            fetch('/update_settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'currency=' + this.value
+            });
+        });
+
+        // Set initial currency symbol on load
+         const currencySymbols = {
+            'USD': '$',
+            'EUR': '€',
+            'GBP': '£',
+            'JPY': '¥',
+            'INR': '₹'
+        };
+        document.querySelector('.currency-symbol').textContent = currencySymbols[currencySelect.value];
+    }
+});
+</script>
+{% endblock %} 
